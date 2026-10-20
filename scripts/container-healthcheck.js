@@ -2,7 +2,8 @@
 const ports = [
   process.env.PAYMENT_API_PORT || '6100',
   process.env.CHECKOUT_PORTAL_PORT || '7000',
-  process.env.MERCHANT_ADMIN_PORT || '6001'
+  process.env.MERCHANT_ADMIN_PORT || '6001',
+  ...(process.env.PUBLIC_BASE_URL ? [process.env.GATEWAY_PORT || '8080'] : [])
 ];
 try {
   await Promise.all(ports.map(async port => {

@@ -2,8 +2,48 @@
 
 This packages the existing gateway services for a controlled deployment. It does
 not connect a merchant storefront or establish production payment readiness.
-The fork currently has unauthenticated administration endpoints; keep the first
-installation private until access restrictions are configured.
+The upstream services have unauthenticated administration endpoints. The new
+single-domain proxy protects these; raw multi-domain deployments still need
+external access restrictions.
+
+## Recommended: one generated EasyPanel domain
+
+For `https://centrallinks-upi.o1wxup.easypanel.host` use
+`.env.easypanel.single-domain.example`. Set a private `ADMIN_PASSWORD` (at least
+12 characters) and a unique `ANDROID_ENROLLMENT_SECRET` in EasyPanel. Preserve
+existing encryption/webhook secrets and the `/app/data` volume.
+
+Set the EasyPanel domain's internal protocol to **HTTP** and target port to
+**8080**, then redeploy. Leave the start command empty. No root domain,
+Cloudflare tunnel or additional subdomains are required. `PUBLIC_BASE_URL`
+takes priority over saved legacy domain settings without rewriting the database.
+
+| URL | Purpose |
+| --- | --- |
+| `/` or `/admin` | Password-protected merchant dashboard |
+| `/youpi.js` | Public checkout SDK |
+| `/checkout/<payment-id>` | Customer checkout |
+| `/api/v1/...` | API and Android observer, on the same hostname |
+| `/health` | Aggregated core-service readiness |
+
+The proxy checks HTTP Basic Auth on the dashboard, admin APIs and supervisor
+APIs; customers and signed Android observation requests do not need that password.
+Administrative simulation/hook endpoints are also protected. HTTPS must stay
+enabled at EasyPanel. Do not expose the raw service ports 6001, 6100, 7000 or 8090
+through additional domains/host ports: those would bypass the proxy's access gate.
+This is a deployment access gate, not a complete security audit of the upstream.
+
+Existing multi-subdomain deployments remain supported when `PUBLIC_BASE_URL`
+is absent. Their manual proxy restrictions in the sections below still apply.
+The optional Gmail observer and demo store are not exposed in single-domain
+mode; start with the native Android observer. Existing hardcoded Gmail OAuth
+paths need a separate fix/review before public Gmail use.
+
+After deployment, open `/admin` and enter `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
+Set your receiving UPI account, then use the dashboard's SMS Gateway pairing
+screen. Its QR payload must show the exact `PUBLIC_BASE_URL`. Pairing and bank
+verification are separate from successful HTTP startup. The crackers storefront
+still needs order storage and verified webhook integration.
 
 ## 1. App service
 

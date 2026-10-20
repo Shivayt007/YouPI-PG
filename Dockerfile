@@ -23,7 +23,7 @@ USER node
 # Mount all of /app/data: database, WhatsApp credentials and observer state.
 VOLUME ["/app/data"]
 # Internal container ports, not published host ports.
-EXPOSE 6100 7000 6001 6003
+EXPOSE 8080 6100 7000 6001 6003
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD ["node", "scripts/container-healthcheck.js"]
 ENTRYPOINT ["/usr/bin/tini", "--"]

@@ -35,6 +35,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build deployment image
         run: docker build --tag youpi-deployment-check .
+      - name: Test single-domain routing and access checks
+        run: docker run --rm youpi-deployment-check node --test scripts/single-origin.test.js
       - name: Start with an isolated test database
         run: |
           docker run --detach --name youpi-check \
@@ -49,6 +51,20 @@ jobs:
             sleep 2
           done
           echo 'Core services did not become ready'
+          exit 1
+      - name: Check single-domain production startup
+        run: |
+          docker rm --force --volumes youpi-check
+          docker run --detach --name youpi-check \
+            --env PUBLIC_BASE_URL=https://gateway.example.test \
+            --env ADMIN_PASSWORD=integration-only-password \
+            youpi-deployment-check
+          for attempt in $(seq 1 45); do
+            if docker exec youpi-check node scripts/container-healthcheck.js; then
+              exit 0
+            fi
+            sleep 2
+          done
           exit 1
       - name: Logs
         if: always()

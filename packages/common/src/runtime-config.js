@@ -11,6 +11,33 @@ export const SERVICE_PORTS = Object.freeze({
   STORE: 5000
 });
 
+/** Resolve one HTTPS origin without inventing sibling subdomains. */
+export function resolveSingleOriginUrls(value) {
+  const url = new URL(value);
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.pathname !== '/') {
+    throw new Error('PUBLIC_BASE_URL must be an HTTPS origin, for example https://app.easypanel.host');
+  }
+  const origin = url.origin;
+  const roles = [
+    ['checkout', 'Checkout', origin, SERVICE_PORTS.CHECKOUT],
+    ['api', 'Payment API', origin, SERVICE_PORTS.API],
+    ['admin', 'Merchant Admin', origin + '/admin', SERVICE_PORTS.ADMIN]
+  ];
+  return {
+    mode: 'production', isProduction: true, singleOrigin: true,
+    domain: url.hostname, prefix: '',
+    checkoutUrl: origin, checkoutHostname: url.host,
+    apiUrl: origin, apiHostname: url.host,
+    adminUrl: origin + '/admin', adminHostname: url.host,
+    // Optional legacy services are not exposed by the single-origin listener.
+    gmailUrl: '', gmailHostname: '', storeUrl: '', storeHostname: '',
+    routes: roles.map(([role, name, publicUrl, port]) => ({
+      role, name, publicHostname: url.host, publicUrl,
+      serviceUrl: `http://localhost:${port}`, port, optional: false
+    }))
+  };
+}
+
 /**
  * Derives public hostnames and Cloudflare published application mappings.
  * @param {{ domain?: string, prefix?: string }} config
@@ -98,6 +125,9 @@ export function deriveCloudflareRoutes(config = {}) {
  * }} options
  */
 export function resolveRuntimeUrls(options = {}) {
+  // Deployment configuration takes precedence over saved legacy hostname settings.
+  const publicBaseUrl = options.publicBaseUrl ?? process.env.PUBLIC_BASE_URL;
+  if (publicBaseUrl) return resolveSingleOriginUrls(publicBaseUrl);
   let mode = options.envMode;
   if (!mode) {
     if (process.env.YOUPI_MODE) {

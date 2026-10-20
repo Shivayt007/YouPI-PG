@@ -815,16 +815,16 @@ export function registerAdminRoutes(server, ctx) {
     const supportMobiles = branding.supportMobiles || (merchant.contactPhone ? [merchant.contactPhone] : []);
     const privacyPolicyUrl = branding.privacyPolicyUrl || '';
 
-    const envMode = branding.envMode || 'localhost';
+    const envMode = process.env.PUBLIC_BASE_URL ? 'production' : (branding.envMode || 'localhost');
     const domainPrefix = (branding.deploymentPrefix || branding.domainPrefix || 'pay').trim().toLowerCase();
     const domainTld = (branding.cloudflareDomain || branding.domainTld || '').trim().toLowerCase();
     const cloudflareDomain = domainTld;
     const deploymentPrefix = domainPrefix;
-    const customDomain = branding.customDomain || (cloudflareDomain ? `https://${deploymentPrefix}.${cloudflareDomain}` : '');
+    const customDomain = process.env.PUBLIC_BASE_URL || branding.customDomain || (cloudflareDomain ? `https://${deploymentPrefix}.${cloudflareDomain}` : '');
     const cloudflareTunnelCommand = branding.cloudflareTunnelCommand || '';
     const tunnelStatus = globalTunnelManager.getStatus();
 
-    const routes = deriveCloudflareRoutes({ domain: cloudflareDomain, prefix: deploymentPrefix });
+    const routes = process.env.PUBLIC_BASE_URL ? resolveRuntimeUrls().routes : deriveCloudflareRoutes({ domain: cloudflareDomain, prefix: deploymentPrefix });
     let runtimeUrls = {};
     try {
       runtimeUrls = resolveRuntimeUrls({ envMode, domain: cloudflareDomain, prefix: deploymentPrefix });

@@ -5,6 +5,7 @@ node_modules
 .env.*
 !.env.example
 !.env.easypanel.example
+!.env.easypanel.single-domain.example
 data
 .berry-sessions
 berrysdk.db*

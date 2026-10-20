@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { runMigrations } from '../packages/db/src/migrate.js';
 import { startControlCenter } from '../apps/control-center/src/index.js';
+import { startGatewayProxy, validateProxyCredentials } from '../apps/gateway-proxy/src/index.js';
 import { resolveRuntimeUrls } from '../packages/common/src/runtime-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -26,6 +27,12 @@ console.log('====================================================');
 console.log('🚀 Starting YOUPI PG V2 — Production Gateway');
 console.log('====================================================');
 
+if (process.env.PUBLIC_BASE_URL) {
+  // Validate before migrating or launching services.
+  resolveRuntimeUrls();
+  validateProxyCredentials();
+}
+
 // 1. Run database migrations & load persisted configuration (Part B3: never overwrite settings)
 console.log('[1/3] Loading persisted production database & settings...');
 const migrationResult = runMigrations();
@@ -36,13 +43,13 @@ const branding = merchant?.branding || {};
 const domain = (branding.cloudflareDomain || branding.domainTld || process.env.CLOUDFLARE_DOMAIN || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
 const prefix = (branding.deploymentPrefix || branding.domainPrefix || process.env.DEPLOYMENT_PREFIX || 'pay').trim().toLowerCase().replace(/[^a-z0-9-_]/g, '') || 'pay';
 
-if (!domain) {
+if (!domain && !process.env.PUBLIC_BASE_URL) {
   console.error('\n================================================================');
   console.error('❌ [CONFIGURATION ERROR] PRODUCTION STARTUP FAILED');
   console.error('================================================================');
   console.error('Cloudflare Domain is required when running in PRODUCTION mode.');
   console.error('Please configure your Cloudflare Domain in the Merchant Admin panel,');
-  console.error('or set CLOUDFLARE_DOMAIN in .env before running `npm start`.');
+  console.error('or set CLOUDFLARE_DOMAIN (multi-domain) / PUBLIC_BASE_URL (single-domain).');
   console.error('');
   console.error('YOUPI PG V2 adheres to authoritative production mode and will NOT');
   console.error('silently rewrite or fall back to localhost in production.');
@@ -58,13 +65,20 @@ try {
   process.exit(1);
 }
 
+if (runtimeUrls.singleOrigin) {
+  // Internal calls stay inside the container; customer-facing URLs use the public origin.
+  process.env.BASE_PAYMENT_API_URL = `http://127.0.0.1:${process.env.PAYMENT_API_PORT || 6100}`;
+  process.env.BASE_CHECKOUT_URL = runtimeUrls.checkoutUrl;
+  process.env.BASE_ADMIN_URL = runtimeUrls.adminUrl;
+}
+
 console.log(`[✓] Authoritative Runtime Mode: PRODUCTION`);
 console.log(`[✓] Cloudflare Domain: ${runtimeUrls.domain}`);
 console.log(`[✓] Deployment Prefix: ${runtimeUrls.prefix}\n`);
 
 // Check for user-configured Cloudflare Tunnel command
 let tunnelProcess = null;
-const tunnelCmd = process.env.CLOUDFLARE_TUNNEL_COMMAND || branding.cloudflareTunnelCommand;
+const tunnelCmd = runtimeUrls.singleOrigin ? '' : (process.env.CLOUDFLARE_TUNNEL_COMMAND || branding.cloudflareTunnelCommand);
 
 if (tunnelCmd && tunnelCmd.trim()) {
   console.log(`[☁️ Cloudflare Tunnel] Executing tunnel command before starting services:`);
@@ -82,20 +96,27 @@ if (tunnelCmd && tunnelCmd.trim()) {
 
 // 3. Launch Process Supervisor and Production Services
 console.log('[2/3] Launching Local Process Supervisor on port 8090...');
-const cc = await startControlCenter(8090);
+const cc = await startControlCenter(Number(process.env.CONTROL_CENTER_PORT || 8090));
 
 console.log('[3/3] Starting core production gateway services (Pure API & Android Observer)...\n');
 await cc.processManager.startAll();
+let gateway = null;
+if (runtimeUrls.singleOrigin) {
+  try { gateway = await startGatewayProxy(); }
+  catch (error) { await cc.close(); throw error; }
+}
 
 console.log('====================================================');
 console.log('🟢 YOUPI PG V2 PRODUCTION GATEWAY ONLINE & ACTIVE');
 console.log('====================================================');
-console.log('AUTHORITATIVE PUBLIC CLOUDFLARE ROUTES:');
+console.log(runtimeUrls.singleOrigin ? 'PUBLIC SINGLE-DOMAIN ROUTES (EasyPanel target port 8080):' : 'AUTHORITATIVE PUBLIC CLOUDFLARE ROUTES:');
 console.log(`• Checkout Portal:      ${runtimeUrls.checkoutUrl}  (-> :7000)`);
 console.log(`• Payment Core API:     ${runtimeUrls.apiUrl}  (-> :6100)`);
 console.log(`• Merchant Admin Hub:   ${runtimeUrls.adminUrl}  (-> :6001)`);
-console.log(`• Gmail OAuth/Observer: ${runtimeUrls.gmailUrl}  (-> :6003)`);
-console.log(`• Demo Store (Opt):     ${runtimeUrls.storeUrl}  (-> :5000)`);
+if (!runtimeUrls.singleOrigin) {
+  console.log(`• Gmail OAuth/Observer: ${runtimeUrls.gmailUrl}  (-> :6003)`);
+  console.log(`• Demo Store (Opt):     ${runtimeUrls.storeUrl}  (-> :5000)`);
+}
 console.log('----------------------------------------------------');
 console.log('OBSERVATION CHANNELS:');
 console.log('• Android SMS Observer: Native APK -> Public Payment API');
@@ -116,6 +137,7 @@ const shutdown = async () => {
       }
     } catch {}
   }
+  if (gateway) await gateway.close();
   await cc.close();
   console.log('All processes terminated cleanly.');
   process.exit(0);
