@@ -51,7 +51,7 @@ export class AdminServer {
   createServer() {
     return http.createServer(async (req, res) => {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-      const pathname = url.pathname;
+      const pathname = ['/admin/', '/payment-link/'].includes(url.pathname) ? url.pathname.slice(0, -1) : url.pathname;
 
       if (req.method === 'OPTIONS') {
         res.writeHead(204, {

@@ -78,16 +78,16 @@ export class CheckoutServer {
     // This avoids cross-origin blocking, CORS errors, and tunnel DNS resolution issues.
     const clientApiBase = '';
 
-    const indicator = state?.upiServerIndicator || { status: 'ISSUES', tier: 'RED', label: 'Server Facing Issues' };
+    const indicator = state?.upiServerIndicator || { status: 'ISSUES', tier: 'RED', label: 'Automatic verification offline' };
     const tier = indicator.tier || (indicator.status === 'WORKING' ? 'GREEN' : (indicator.status === 'BUSY' ? 'YELLOW' : 'RED'));
     const healthClass = tier === 'GREEN' ? 'is-working' : (tier === 'YELLOW' ? 'is-busy' : 'is-issues');
-    const healthLabel = indicator.label || (tier === 'GREEN' ? 'Server Is Working' : (tier === 'YELLOW' ? 'UPI Server Busy' : 'Server Facing Issues'));
+    const healthLabel = indicator.label || (tier === 'GREEN' ? 'Automatic verification online' : (tier === 'YELLOW' ? 'Single verification channel online' : 'Automatic verification offline'));
     const alertStyle = tier === 'GREEN' ? 'none' : 'flex';
     const alertClass = tier === 'YELLOW' ? 'ypg-downtime-alert is-warning' : 'ypg-downtime-alert';
-    const alertHeading = tier === 'YELLOW' ? 'UPI Server Busy' : 'UPI Server Facing Issues';
+    const alertHeading = tier === 'YELLOW' ? 'Single verification channel online' : 'Automatic verification unavailable';
     const alertMsg = indicator.warning || (tier === 'YELLOW'
-      ? 'Your payment may go through extra processing seconds.'
-      : 'It is not recommended to pay by UPI right now as the server is facing downtime. We recommend paying by cash instead.');
+      ? 'Only one payment observer is online. Automatic confirmation may take longer.'
+      : "Automatic confirmation is unavailable because the shop's payment observers are offline. Contact the shop before paying.");
 
     const sellingMode = state?.sellingMode || state?.branding?.sellingMode || 'ONLINE';
     const enabledMethods = state?.enabledMethods || state?.branding?.enabledPaymentMethods || ['UPI'];

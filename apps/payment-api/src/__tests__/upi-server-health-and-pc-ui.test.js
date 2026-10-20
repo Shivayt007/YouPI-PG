@@ -61,7 +61,7 @@ describe('UPI Server Health Indicator & Checkout State Invariants', () => {
     assert.equal(res.status, 200);
     assert.ok(typeof res.body.isWorking === 'boolean');
     assert.ok(['WORKING', 'ISSUES'].includes(res.body.status));
-    assert.ok(['Server Is Working', 'Server Facing Issues'].includes(res.body.label));
+    assert.ok(['Automatic verification online', 'Automatic verification offline'].includes(res.body.label));
     assert.ok(typeof res.body.reason === 'string');
   });
 
@@ -91,8 +91,8 @@ describe('UPI Server Health Indicator & Checkout State Invariants', () => {
     assert.ok(indicator.label);
     if (!indicator.isWorking) {
       assert.equal(indicator.status, 'ISSUES');
-      assert.equal(indicator.label, 'Server Facing Issues');
-      assert.ok(indicator.warning.includes('not recommended to pay by UPI'));
+      assert.equal(indicator.label, 'Automatic verification offline');
+      assert.ok(indicator.warning.includes('Automatic confirmation is unavailable'));
     }
   });
 
@@ -134,7 +134,7 @@ describe('UPI Server Health Indicator & Checkout State Invariants', () => {
       const healthRes = await request('/api/v1/checkout/server-health');
       assert.equal(healthRes.status, 200);
       assert.equal(healthRes.body.status, 'WORKING');
-      assert.equal(healthRes.body.label, 'Server Is Working');
+      assert.equal(healthRes.body.label, 'Automatic verification online');
       assert.equal(healthRes.body.isWorking, true);
       assert.ok(healthRes.body.reason.includes('All observers active'));
       assert.equal(healthRes.body.warning, null);
@@ -143,6 +143,28 @@ describe('UPI Server Health Indicator & Checkout State Invariants', () => {
         await new Promise(r => mockGmailServer.close(r));
       }
       delete process.env.GMAIL_OBSERVER_PORT;
+    }
+  });
+
+  test('Stored Gmail credentials and an idle service do not report an active observer', async () => {
+    testDb.execute('DELETE FROM android_devices');
+    const previousPort = process.env.GMAIL_OBSERVER_PORT;
+    const idle = http.createServer((req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ status: 'UP', isRunning: false, isPolling: false, isLoggedIn: false }));
+    });
+    await new Promise(resolve => idle.listen(0, '127.0.0.1', resolve));
+    process.env.GMAIL_OBSERVER_PORT = String(idle.address().port);
+    try {
+      const response = await request('/api/v1/checkout/server-health');
+      assert.equal(response.body.gmailHealthy, false);
+      assert.equal(response.body.isWorking, false);
+      assert.equal(response.body.label, 'Automatic verification offline');
+      assert.ok(!response.body.warning.includes('downtime'));
+    } finally {
+      await new Promise(resolve => idle.close(resolve));
+      if (previousPort === undefined) delete process.env.GMAIL_OBSERVER_PORT;
+      else process.env.GMAIL_OBSERVER_PORT = previousPort;
     }
   });
 
@@ -168,7 +190,7 @@ describe('UPI Server Health Indicator & Checkout State Invariants', () => {
     const healthRes = await request('/api/v1/checkout/server-health');
     assert.equal(healthRes.status, 200);
     assert.equal(healthRes.body.status, 'WORKING');
-    assert.equal(healthRes.body.label, 'Server Is Working');
+    assert.equal(healthRes.body.label, 'Automatic verification online');
     assert.equal(healthRes.body.isWorking, true);
     assert.equal(healthRes.body.warning, null);
     assert.equal(healthRes.body.isFalseNarrative, true);
@@ -192,9 +214,9 @@ describe('UPI Server Health Indicator & Checkout State Invariants', () => {
     const healthRes = await request('/api/v1/checkout/server-health');
     assert.equal(healthRes.status, 200);
     assert.equal(healthRes.body.status, 'ISSUES');
-    assert.equal(healthRes.body.label, 'Server Facing Issues');
+    assert.equal(healthRes.body.label, 'Automatic verification offline');
     assert.equal(healthRes.body.isWorking, false);
-    assert.ok(healthRes.body.warning.includes('not recommended to pay by UPI'));
+    assert.ok(healthRes.body.warning.includes('Automatic confirmation is unavailable'));
   });
 
   test('Dev settings: Disabling false narrative explicitly immediately reverts to live status', async () => {

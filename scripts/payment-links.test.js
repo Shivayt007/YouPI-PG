@@ -4,6 +4,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { Database, runMigrations } from '@youpi/db';
 import { createPaymentApp } from '../apps/payment-api/src/index.js';
+import { CheckoutServer } from '../apps/checkout-portal/src/server.js';
 import { AdminServer } from '../apps/merchant-admin/src/server.js';
 import { createGatewayProxy } from '../apps/gateway-proxy/src/index.js';
 
@@ -30,7 +31,7 @@ test('Merchant creates real API-backed links, safely retries, lists saved status
   process.env.PUBLIC_BASE_URL = 'https://gateway.example.test';
   process.env.PAYMENT_API_PORT = String(apiPort);
   const adminPort = await start(new AdminServer({ db }).createServer());
-  const checkoutPort = await start(http.createServer((req, res) => res.end('{"status":"UP"}')));
+  const checkoutPort = await start(new CheckoutServer({ apiBaseUrl: `http://127.0.0.1:${apiPort}` }).createServer());
   const env = { ...process.env, ADMIN_USERNAME: 'admin', ADMIN_PASSWORD: 'integration-only-password', MERCHANT_ADMIN_PORT: String(adminPort), CHECKOUT_PORTAL_PORT: String(checkoutPort) };
   const port = await start(createGatewayProxy({ env }));
   const origin = `http://127.0.0.1:${port}`;
@@ -42,7 +43,7 @@ test('Merchant creates real API-backed links, safely retries, lists saved status
       ...(data ? { body: JSON.stringify(data) } : {})
     });
     const text = await response.text();
-    return { status: response.status, text, data: response.headers.get('content-type')?.includes('application/json') ? JSON.parse(text) : null };
+    return { status: response.status, challenge: response.headers.get('www-authenticate'), text, data: response.headers.get('content-type')?.includes('application/json') ? JSON.parse(text) : null };
   };
   assert.equal((await call('/payment-link', null, false)).status, 401);
   assert.equal((await call('/api/admin/payment-links', {}, false)).status, 401);
@@ -65,6 +66,16 @@ test('Merchant creates real API-backed links, safely retries, lists saved status
   assert.equal(created.data.status, 'INITIATED'); // Browser-supplied SUCCESS is ignored.
   assert.equal(created.data.checkoutUrl, `https://gateway.example.test/checkout/${created.data.paymentId}`);
   assert.equal(api.context.sessionRepo.findById(created.data.paymentId).amountPaise, 12345n);
+  const guestCheckout = await call(`/checkout/${created.data.paymentId}`, null, false);
+  assert.equal(guestCheckout.status, 200);
+  assert.equal(guestCheckout.challenge, null);
+  assert.ok(!guestCheckout.text.includes('/trigger-hook`'));
+  assert.ok(!guestCheckout.text.includes('/expire`'));
+  for (const resource of ['/favicon.ico', '/icons/upi.svg', `/checkout/${created.data.paymentId}/qr.svg`, `/api/v1/checkout/${created.data.paymentId}/state`]) {
+    const response = await call(resource, null, false);
+    assert.ok([200, 204].includes(response.status), resource);
+    assert.equal(response.challenge, null, resource);
+  }
   const retry = await call('/api/admin/payment-links', input);
   assert.equal(retry.status, 200);
   assert.equal(retry.data.paymentId, created.data.paymentId);

@@ -53,8 +53,22 @@ test('Proxy routes checkout and raw API payloads, gates admin paths, and streams
   const request = (path, options = {}) => fetch(base + path, { ...options, signal: AbortSignal.timeout(3000) });
   assert.equal((await request('/health')).status, 200);
   for (const path of ['/', '/admin', '/api/v1/admin/merchant-settings', '/api/admin/tickets', '/api/services', '/api/logs/stream', '/api/v1/checkout/id/simulate-observation', '/api/v1/checkout/id/trigger-hook', '/api/v1/checkout/id/expire', '/api/v1/%61dmin/merchant-settings', '/checkout/%2e%2e/api/v1/admin/queue']) {
-    assert.equal((await request(path)).status, 401, path);
+    const response = await request(path);
+    assert.equal(response.status, 401, path);
+    assert.equal(Boolean(response.headers.get('www-authenticate')), path === '/' || path === '/admin', path);
+
   }
+  for (const path of ['/favicon.ico', '/apple-touch-icon.png']) {
+    const response = await request(path);
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get('www-authenticate'), null);
+  }
+  const unknownAsset = await request('/missing-asset.png');
+  assert.equal(unknownAsset.status, 404);
+  assert.equal(unknownAsset.headers.get('www-authenticate'), null);
+  const callback = await request('/api/v1/checkout/test-id/trigger-hook', { method: 'POST', body: '{}' });
+  assert.equal(callback.status, 401);
+  assert.equal(callback.headers.get('www-authenticate'), null);
   const admin = await request('/admin', { headers: { Authorization: auth } });
   assert.equal((await admin.json()).service, 'admin');
   assert.equal((await request('/api/v1/admin/queue', { headers: { Authorization: auth } })).status, 200);

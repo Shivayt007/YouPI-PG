@@ -45,6 +45,25 @@ screen. Its QR payload must show the exact `PUBLIC_BASE_URL`. Pairing and bank
 verification are separate from successful HTTP startup. The crackers storefront
 still needs order storage and verified webhook integration.
 
+## Customer checkout and password prompts
+
+Only `/admin`, `/payment-link`, and the root dashboard should open a browser
+administrator password prompt. Checkout pages, QR images, SDK assets and Android
+observer requests are public routes; administrative APIs still reject callers
+without admin credentials, but do not issue a browser Basic Auth challenge.
+
+Keep the domain on port **8080**. If you previously enabled service-wide Basic
+Auth under EasyPanel Security, it must be removed for public checkout after the
+8080 proxy is active. The app's administrator gate then protects admin routes.
+Do not disable that gate or expose raw service ports to work around a login prompt.
+
+The checkout health message describes the shop's verification observers, not the
+UPI bank network. With no connected observer, automatic confirmation is unavailable;
+connect the Android bank-alert phone and check its recent heartbeat under
+Daily Merchant Operations → Payment Observers Status. A saved Gmail token alone
+does not count as a running observer. Bank/UPI transfer availability is not measured
+by this indicator, and QR visibility alone does not prove verification is ready.
+
 ## Create and share real payment links
 
 After deploying the latest `main` branch:

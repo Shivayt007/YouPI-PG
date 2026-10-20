@@ -4378,11 +4378,8 @@
         }, '*');
       } catch { }
 
-      fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/trigger-hook`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, details })
-      }).catch(() => { });
+      // UI events stay in the browser. Signed outcome webhooks are dispatched
+      // by the server; customer pages never call protected admin telemetry.
     }
 
     // --- SAVED / REMEMBERED CUSTOMER ACCOUNT (STRICT SINGLE USER) ---
@@ -5244,7 +5241,6 @@
             }, () => {
               const el = document.getElementById('codTimerText');
               if (el) el.textContent = 'Expired';
-              fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/expire`, { method: 'POST' }).catch(() => { });
               loadState();
             });
           } else if (method === 'UPI') {
@@ -5256,7 +5252,6 @@
               }, () => {
                 const el = document.getElementById('activeTimerText');
                 if (el) el.textContent = 'Expired';
-                fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/expire`, { method: 'POST' }).catch(() => { });
                 loadState();
               });
             } else if (resData.status === 'QUEUED') {
@@ -5725,7 +5720,7 @@
       });
 
       // Update UPI Server Health Indicator (3-Tier Model: Green, Yellow, Red)
-      const serverIndicator = data.upiServerIndicator || { status: 'WORKING', tier: 'GREEN', label: 'Server Is Working', isWorking: true };
+      const serverIndicator = data.upiServerIndicator || { status: 'ISSUES', tier: 'RED', label: 'Automatic verification offline', isWorking: false };
       const healthPill = document.getElementById('upiServerHealthIndicator');
       const healthLabel = document.getElementById('serverStatusLabel');
       const downtimeAlert = document.getElementById('serverDowntimeAlert');
@@ -5745,7 +5740,7 @@
         }
       }
       if (healthLabel) {
-        healthLabel.textContent = serverIndicator.label || (tier === 'GREEN' ? 'Server Is Working' : (tier === 'YELLOW' ? 'UPI Server Busy' : 'Server Facing Issues'));
+        healthLabel.textContent = serverIndicator.label || (tier === 'GREEN' ? 'Automatic verification online' : (tier === 'YELLOW' ? 'Single verification channel online' : 'Automatic verification offline'));
       }
       if (downtimeAlert) {
         if (tier === 'GREEN') {
@@ -5753,9 +5748,9 @@
         } else if (tier === 'YELLOW') {
           downtimeAlert.style.display = 'flex';
           downtimeAlert.className = 'ypg-downtime-alert is-warning';
-          if (downtimeHeading) downtimeHeading.textContent = 'UPI Server Busy';
+          if (downtimeHeading) downtimeHeading.textContent = 'Single verification channel online';
           if (downtimeMsg) {
-            downtimeMsg.textContent = serverIndicator.warning || 'Your payment may go through extra processing seconds.';
+            downtimeMsg.textContent = serverIndicator.warning || 'Only one payment observer is online. Automatic confirmation may take longer.';
           }
           if (btnCashAlt) {
             btnCashAlt.style.display = (serverIndicator.recommendedAlternative === 'CASH') ? 'inline-block' : 'none';
@@ -5764,9 +5759,9 @@
           // RED
           downtimeAlert.style.display = 'flex';
           downtimeAlert.className = 'ypg-downtime-alert';
-          if (downtimeHeading) downtimeHeading.textContent = 'UPI Server Facing Issues';
+          if (downtimeHeading) downtimeHeading.textContent = 'Automatic verification unavailable';
           if (downtimeMsg) {
-            downtimeMsg.textContent = serverIndicator.warning || 'It is not recommended to pay by UPI right now as the server is facing downtime. We recommend paying by cash instead.';
+            downtimeMsg.textContent = serverIndicator.warning || "Automatic confirmation is unavailable because the shop's payment observers are offline. Contact the shop before paying.";
           }
           if (btnCashAlt) {
             btnCashAlt.style.display = (serverIndicator.recommendedAlternative === 'CASH') ? 'inline-block' : 'none';
@@ -6132,7 +6127,6 @@
           }, () => {
             const el = document.getElementById('codTimerText');
             if (el) el.textContent = 'Expired';
-            fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/expire`, { method: 'POST' }).catch(() => { });
             loadState();
           }, data.expiresAt);
         } else if (currentSelectedMethod === 'CASH_COUNTER') {
@@ -6183,7 +6177,6 @@
             if (tText) tText.textContent = 'Expired';
             if (btnContinue) btnContinue.style.display = 'none';
             closeProcessingModal();
-            fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/expire`, { method: 'POST' }).catch(() => { });
             loadState();
           }, targetExpiry);
         }

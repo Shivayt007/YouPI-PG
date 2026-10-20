@@ -108,7 +108,7 @@ async function checkUpiServerHealth(ctx, enabledMethods = [], sellingMode = 'OFF
         return {
           status: 'WORKING',
           tier: 'GREEN',
-          label: 'Server Is Working',
+          label: 'Automatic verification online',
           isWorking: true,
           reason: 'False Narrative Active (Dev Override: GREEN): UPI servers interpreted as operational',
           smsHealthy: true,
@@ -123,12 +123,12 @@ async function checkUpiServerHealth(ctx, enabledMethods = [], sellingMode = 'OFF
         return {
           status: 'BUSY',
           tier: 'YELLOW',
-          label: 'UPI Server Busy',
+          label: 'Single verification channel online',
           isWorking: true,
           reason: 'False Narrative Active (Dev Override: YELLOW): UPI servers experiencing processing delays',
           smsHealthy: true,
           gmailHealthy: false,
-          warning: 'Your payment may go through extra processing seconds.',
+          warning: 'Only one payment observer is online. Automatic confirmation may take longer.',
           recommendedAlternative: null,
           isFalseNarrative: true,
           narrative: 'YELLOW',
@@ -138,12 +138,12 @@ async function checkUpiServerHealth(ctx, enabledMethods = [], sellingMode = 'OFF
         return {
           status: 'ISSUES',
           tier: 'RED',
-          label: 'Server Facing Issues',
+          label: 'Automatic verification offline',
           isWorking: false,
           reason: 'False Narrative Active (Dev Override: RED): UPI servers facing downtime',
           smsHealthy: false,
           gmailHealthy: false,
-          warning: 'It is not recommended to pay by UPI right now as the server is facing downtime.',
+          warning: "Automatic confirmation is unavailable because the shop's payment observers are offline. Contact the shop before paying.",
           recommendedAlternative: null,
           isFalseNarrative: true,
           narrative: 'RED',
@@ -164,9 +164,9 @@ async function checkUpiServerHealth(ctx, enabledMethods = [], sellingMode = 'OFF
       const activeAndroid = ctx.db.queryOne(`
         SELECT id, device_name, last_heartbeat_at
         FROM android_devices
-        WHERE is_active = 1 AND last_heartbeat_at >= datetime('now', '-5 minutes')
+        WHERE merchant_id = ? AND is_active = 1 AND datetime(last_heartbeat_at) >= datetime('now', '-5 minutes')
         LIMIT 1
-      `);
+      `, [merchantId]);
       if (activeAndroid) {
         smsHealthy = true;
         smsReason = `Android SMS Gateway Active (${activeAndroid.device_name || 'Enrolled Device'})`;
@@ -204,7 +204,7 @@ async function checkUpiServerHealth(ctx, enabledMethods = [], sellingMode = 'OFF
         const res = await fetch(`http://127.0.0.1:${gmailPort}/health`, { signal: AbortSignal.timeout(800) });
         if (res.ok) {
           const data = await res.json();
-          if (data.status === 'UP') {
+          if (data.status === 'UP' && (data.isRunning === true || data.isPolling === true)) {
             pollerActive = true;
           }
         }
@@ -234,7 +234,7 @@ async function checkUpiServerHealth(ctx, enabledMethods = [], sellingMode = 'OFF
         } catch (e) {}
       }
 
-      if (pollerActive || hasRefreshToken) {
+      if (pollerActive) {
         gmailHealthy = true;
         gmailReason = 'Gmail OAuth connected and actively polling';
       } else {
@@ -274,7 +274,7 @@ async function checkUpiServerHealth(ctx, enabledMethods = [], sellingMode = 'OFF
     return {
       status: 'WORKING',
       tier: 'GREEN',
-      label: 'Server Is Working',
+      label: 'Automatic verification online',
       isWorking: true,
       reason: 'All observers active: Gmail OAuth polling & SMS Gateway connected',
       smsHealthy: true,
@@ -288,12 +288,12 @@ async function checkUpiServerHealth(ctx, enabledMethods = [], sellingMode = 'OFF
     return {
       status: 'BUSY',
       tier: 'YELLOW',
-      label: 'UPI Server Busy',
+      label: 'Single verification channel online',
       isWorking: true,
       reason: smsHealthy ? 'SMS observer active, Gmail observer offline' : 'Gmail observer active, SMS observer offline',
       smsHealthy,
       gmailHealthy,
-      warning: 'Your payment may go through extra processing seconds.',
+      warning: 'Only one payment observer is online. Automatic confirmation may take longer.',
       recommendedAlternative: null
     };
   }
@@ -301,12 +301,12 @@ async function checkUpiServerHealth(ctx, enabledMethods = [], sellingMode = 'OFF
   return {
     status: 'ISSUES',
     tier: 'RED',
-    label: 'Server Facing Issues',
+    label: 'Automatic verification offline',
     isWorking: false,
     reason: 'Both Gmail OAuth and SMS Gateway are offline or unconfigured',
     smsHealthy: false,
     gmailHealthy: false,
-    warning: 'It is not recommended to pay by UPI right now as the server is facing downtime. We recommend paying by cash instead.',
+    warning: "Automatic confirmation is unavailable because the shop's payment observers are offline. Contact the shop before paying.",
     recommendedAlternative: hasCash ? 'CASH' : null
   };
 }

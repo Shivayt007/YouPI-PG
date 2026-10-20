@@ -52,6 +52,11 @@ export function createGatewayProxy(options = {}) {
       return;
     }
 
+    // Browser icons are public. A missing icon must never open an admin login prompt.
+    if (['/favicon.ico', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png'].includes(pathname)) {
+      res.writeHead(204, { 'Cache-Control': 'public, max-age=86400' }); res.end(); return;
+    }
+
     const checkoutAsset = pathname === '/youpi.js' || under(pathname, '/sdk') || under(pathname, '/icons');
     const checkoutPage = under(pathname, '/checkout');
     const publicApi = ['/api/v1/payments', '/api/v1/orders', '/api/v1/checkout', '/api/v1/customer', '/api/v1/devices', '/api/v1/observers'].some(prefix => under(pathname, prefix))
@@ -60,13 +65,22 @@ export function createGatewayProxy(options = {}) {
       || pathname === '/api/v1/health';
     // These support/developer actions are never public, even on checkout paths.
     const privilegedCheckout = /\/(simulate-observation|trigger-hook|expire)\/?$/.test(pathname);
-    const administrative = !(checkoutAsset || checkoutPage || publicApi) || privilegedCheckout;
+    const adminPage = ['/', '/admin', '/admin/', '/payment-link', '/payment-link/'].includes(pathname);
+    const adminApi = ['/api/v1/admin', '/api/admin', '/api/services', '/api/logs'].some(prefix => under(pathname, prefix));
+    const administrative = adminPage || adminApi || pathname === '/youpi-sms-gateway.apk' || privilegedCheckout;
+    if (!(checkoutAsset || checkoutPage || publicApi || administrative)) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('Route not found'); return;
+    }
 
     if (administrative) {
       const auth = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
       if (!timingSafeEqual(digest(auth), authDigest)) {
-        res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="YouPI administration", charset="UTF-8"', 'Cache-Control': 'no-store' });
-        res.end('Administrator sign-in required'); return;
+        // Challenge only a deliberate admin-page navigation. Fetches/assets must
+        // not cause the browser to ask customers for the merchant password.
+        const rejectionHeaders = { 'Cache-Control': 'no-store', 'Content-Type': 'application/json' };
+        if (adminPage) rejectionHeaders['WWW-Authenticate'] = 'Basic realm="YouPI administration", charset="UTF-8"';
+        res.writeHead(401, rejectionHeaders);
+        res.end(JSON.stringify({ error: 'Administrator sign-in required' })); return;
       }
       // Basic Auth is browser-ambient; reject cross-origin state changes as well.
       if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.origin && req.headers.origin !== origin) {
