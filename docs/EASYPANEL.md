@@ -45,6 +45,26 @@ screen. Its QR payload must show the exact `PUBLIC_BASE_URL`. Pairing and bank
 verification are separate from successful HTTP startup. The crackers storefront
 still needs order storage and verified webhook integration.
 
+## Pay from a UPI app on the same phone
+
+Checkout has labelled GPay, PhonePe, Paytm, CRED, BHIM and Amazon Pay buttons,
+plus **Open UPI app**. They use the active payment session's server-supplied
+recipient, amount and note. Named apps use Android package intents; the generic
+button uses the UPI app chooser. GPay also has its documented iOS URI scheme.
+
+The links navigate directly from the customer's tap. No delayed background
+launch or client-side success flag is used. Returning to the browser reloads the
+server's current payment state. Unavailable apps return to the same checkout;
+customers can try the generic app option or use the QR. Only ACTIVE UPI sessions
+can launch, so an expired or switched payment method cannot use stale app links.
+
+Use Chrome on the payment phone with the selected UPI app installed. Chrome's
+Desktop site setting can make the mobile screen look very small; turn it off for
+the normal mobile layout. Desktop computers retain the QR flow. Some embedded
+browsers restrict app links; open the customer checkout URL in Chrome if needed.
+App opening and bank acceptance still require a physical-device check. These
+buttons do not replace bank-alert observer pairing or verify payment by themselves.
+
 ## Customer checkout and password prompts
 
 Only `/admin`, `/payment-link`, and the root dashboard should open a browser

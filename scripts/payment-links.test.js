@@ -71,7 +71,8 @@ test('Merchant creates real API-backed links, safely retries, lists saved status
   assert.equal(guestCheckout.challenge, null);
   assert.ok(!guestCheckout.text.includes('/trigger-hook`'));
   assert.ok(!guestCheckout.text.includes('/expire`'));
-  for (const resource of ['/favicon.ico', '/icons/upi.svg', `/checkout/${created.data.paymentId}/qr.svg`, `/api/v1/checkout/${created.data.paymentId}/state`]) {
+  assert.ok(guestCheckout.text.includes('data-upi-app="google-pay"'));
+  for (const resource of ['/favicon.ico', '/icons/upi.svg', '/sdk/upi-app-links.js', `/checkout/${created.data.paymentId}/qr.svg`, `/api/v1/checkout/${created.data.paymentId}/state`]) {
     const response = await call(resource, null, false);
     assert.ok([200, 204].includes(response.status), resource);
     assert.equal(response.challenge, null, resource);

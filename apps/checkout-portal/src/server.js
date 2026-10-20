@@ -175,6 +175,13 @@ export class CheckoutServer {
         return;
       }
 
+      // App links are served locally and launch only from an explicit customer tap.
+      if (pathname === '/sdk/upi-app-links.js') {
+        res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(fs.readFileSync(path.join(__dirname, 'sdk', 'upi-app-links.js'), 'utf8'));
+        return;
+      }
+
       // Official SDK script: GET /youpi.js or /sdk/youpi-checkout.js
       if (pathname === '/youpi.js' || pathname === '/sdk/youpi.js' || pathname === '/sdk/youpi-checkout.js') {
         try {

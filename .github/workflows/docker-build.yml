@@ -36,7 +36,7 @@ jobs:
       - name: Build deployment image
         run: docker build --tag youpi-deployment-check .
       - name: Test single-domain routing and access checks
-        run: docker run --rm youpi-deployment-check node --test scripts/single-origin.test.js scripts/payment-links.test.js apps/payment-api/src/__tests__/upi-server-health-and-pc-ui.test.js
+        run: docker run --rm youpi-deployment-check node --test scripts/upi-app-links.test.js scripts/single-origin.test.js scripts/payment-links.test.js apps/payment-api/src/__tests__/upi-server-health-and-pc-ui.test.js
       - name: Start with an isolated test database
         run: |
           docker run --detach --name youpi-check \

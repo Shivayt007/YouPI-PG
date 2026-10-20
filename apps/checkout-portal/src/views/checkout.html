@@ -3041,6 +3041,16 @@
     .ypg-btn-downtime-alt:hover {
       opacity: 0.9;
     }
+
+    .ypg-app-pay-title {font-size:12px;font-weight:700;color:#334155;margin:6px 0 9px;}
+    .ypg-upi-app-buttons {display:flex;flex-wrap:wrap;gap:8px;}
+    .ypg-upi-app-button {display:inline-flex;align-items:center;gap:7px;min-height:46px;padding:9px 11px;border:1px solid #dbe3ee;border-radius:9px;background:#fff;color:#24344e;text-decoration:none;font-size:12px;font-weight:650;cursor:pointer;}
+    .ypg-upi-app-button:hover {border-color:var(--ypg-blue);background:#f5f8ff;}
+    .ypg-upi-app-button .ypg-app-icon {width:25px;height:25px;}
+    .ypg-upi-any {display:flex;align-items:center;justify-content:center;min-height:46px;margin-top:10px;padding:11px 14px;background:var(--ypg-blue);color:white;border-radius:9px;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;}
+    .ypg-upi-app-button[aria-disabled="true"],.ypg-upi-any[aria-disabled="true"] {opacity:.5;cursor:not-allowed;}
+    .ypg-app-launch-hint {font-size:11px;line-height:1.5;color:#64748b;margin:9px 0 0;}
+    .ypg-upi-app-button:focus-visible,.ypg-upi-any:focus-visible {outline:3px solid #f59e0b;outline-offset:3px;}
   </style>
 </head>
 
@@ -3518,42 +3528,30 @@
 
                   <!-- Right: Prompt, UPI App Logos -->
                   <div class="ypg-qr-details-col">
-                    <div class="ypg-qr-prompt-title">Scan the QR using any UPI App</div>
+                    <div class="ypg-qr-prompt-title">Scan the QR or tap a UPI app</div>
 
-                    <!-- Brand Logos Row (Zero Fake Offers) -->
-                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:3px 0 6px 0;">
-                      <div class="ypg-upi-logos-row">
-                        <div class="ypg-app-icon" title="Google Pay"><img src="/icons/gpay.png"
-                            onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.gpay" alt="GPay" /></div>
-                        <div class="ypg-app-icon" title="PhonePe"><img src="/icons/phonepe.png"
-                            onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.phonepe" alt="PhonePe" />
-                        </div>
-                        <div class="ypg-app-icon" title="Paytm"><img src="/icons/paytm.png"
-                            onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.paytm" alt="Paytm" /></div>
-                        <div class="ypg-app-icon" title="CRED"><img src="/icons/cred.png"
-                            onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.cred" alt="CRED" /></div>
-                        <div class="ypg-app-icon" title="BHIM UPI"><img src="/icons/bhim.png"
-                            onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.bhim" alt="BHIM" /></div>
-                        <div class="ypg-app-icon" title="Amazon Pay"><img src="/icons/amazonpay.png"
-                            onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.amazonpay"
-                            alt="Amazon Pay" /></div>
-                      </div>
+                    <div class="ypg-app-pay-title">Pay using an app</div>
+                    <div class="ypg-upi-app-buttons" aria-label="Choose your UPI app">
+                      <a class="ypg-upi-app-button" data-upi-app="google-pay" aria-disabled="true" target="_top" aria-label="Pay with GPay"><span class="ypg-app-icon"><img src="/icons/gpay.png" onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.gpay" alt=""></span><span>GPay</span></a>
+                      <a class="ypg-upi-app-button" data-upi-app="phonepe" aria-disabled="true" target="_top" aria-label="Pay with PhonePe"><span class="ypg-app-icon"><img src="/icons/phonepe.png" onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.phonepe" alt=""></span><span>PhonePe</span></a>
+                      <a class="ypg-upi-app-button" data-upi-app="paytm" aria-disabled="true" target="_top" aria-label="Pay with Paytm"><span class="ypg-app-icon"><img src="/icons/paytm.png" onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.paytm" alt=""></span><span>Paytm</span></a>
+                      <a class="ypg-upi-app-button" data-upi-app="cred" aria-disabled="true" target="_top" aria-label="Pay with CRED"><span class="ypg-app-icon"><img src="/icons/cred.png" onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.cred" alt=""></span><span>CRED</span></a>
+                      <a class="ypg-upi-app-button" data-upi-app="bhim" aria-disabled="true" target="_top" aria-label="Pay with BHIM"><span class="ypg-app-icon"><img src="/icons/bhim.png" onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.bhim" alt=""></span><span>BHIM</span></a>
+                      <a class="ypg-upi-app-button" data-upi-app="amazon-pay" aria-disabled="true" target="_top" aria-label="Pay with Amazon Pay"><span class="ypg-app-icon"><img src="/icons/amazonpay.png" onerror="if(window.FALLBACK_ICONS)this.src=window.FALLBACK_ICONS.amazonpay" alt=""></span><span>Amazon Pay</span></a>
                     </div>
-
-                    <div style="font-size:12px; color:#64748b; line-height:1.4;">
-                      Open any UPI app on your phone to scan and pay directly.
-                    </div>
+                    <a class="ypg-upi-any" data-upi-app="any" aria-disabled="true" target="_top">Open UPI app ↗</a>
+                    <p id="upiAppLaunchHint" class="ypg-app-launch-hint" role="status" aria-live="polite">Tap an app to pay on this phone, or scan the QR from another device.</p>
                   </div>
                 </div>
                 <!-- UPI Payment Instructions Guide -->
                 <div class="ypg-instructions-card">
                   <div class="ypg-instruction-step">
                     <div class="ypg-step-num">1</div>
-                    <div>Open any UPI App on your phone (Google Pay, PhonePe, Paytm, CRED).</div>
+                    <div>Tap GPay, PhonePe, Paytm or Open UPI app above.</div>
                   </div>
                   <div class="ypg-instruction-step">
                     <div class="ypg-step-num">2</div>
-                    <div>Scan the QR code above and complete the payment of <strong>₹{{AMOUNT}}</strong>.</div>
+                    <div>Complete payment in your app, or scan the QR from another device, for <strong>₹{{AMOUNT}}</strong>.</div>
                   </div>
                   <div class="ypg-instruction-step">
                     <div class="ypg-step-num">3</div>
@@ -4135,6 +4133,7 @@
 
   </div>
 
+  <script src="/sdk/upi-app-links.js"></script>
   <script id="ypgInitialState" type="application/json">{{INITIAL_STATE_JSON}}</script>
   <script>
     const PAYMENT_ID = "{{PAYMENT_ID}}";
@@ -4146,6 +4145,7 @@
     let sse = null;
     let activeCustomer = null;
     let activeToken = null;
+    window.YoupiAppLinks.init({ getState: () => state, onReturn: () => loadState() });
 
     const STORAGE_KEY_IDENTITY = 'youpi.customer.identity';
     const STORAGE_KEY_ACCOUNTS = 'youpi.customer.accounts';
@@ -5588,6 +5588,7 @@
 
     function renderState(data) {
       state = data;
+      window.YoupiAppLinks.update(data);
       const b = data.branding || {};
       const appName = b.appName || 'YouPI PG';
       const merchantName = data.merchantName || 'Merchant Checkout';
