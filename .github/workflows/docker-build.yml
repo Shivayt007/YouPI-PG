@@ -1,0 +1,58 @@
+name: Docker deployment check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - package.json
+      - package-lock.json
+      - 'apps/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - .github/workflows/docker-build.yml
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - package.json
+      - package-lock.json
+      - 'apps/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - .github/workflows/docker-build.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build deployment image
+        run: docker build --tag youpi-deployment-check .
+      - name: Start with an isolated test database
+        run: |
+          docker run --detach --name youpi-check \
+            --env CLOUDFLARE_DOMAIN=example.test \
+            youpi-deployment-check
+      - name: Wait for API, checkout and admin health
+        run: |
+          for attempt in $(seq 1 45); do
+            if docker exec youpi-check node scripts/container-healthcheck.js; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Core services did not become ready'
+          exit 1
+      - name: Logs
+        if: always()
+        run: docker logs youpi-check || true
+      - name: Stop test container
+        if: always()
+        run: docker rm --force --volumes youpi-check || true
