@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getDatabase, MerchantRepository, SupportTicketRepository } from '@youpi/db';
+import { handlePaymentLinks } from './payment-links.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +67,27 @@ export class AdminServer {
       if (pathname === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'UP', service: 'merchant-admin' }));
+        return;
+      }
+
+      // Merchant-operated payment links; the public proxy requires administrator sign-in.
+      if (pathname === '/payment-link' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(fs.readFileSync(path.join(__dirname, 'views', 'payment-link.html'), 'utf8'));
+        return;
+      }
+      if (pathname === '/api/admin/payment-links') {
+        try {
+          await handlePaymentLinks(req, res, {
+            db: this.db, merchantRepo: this.merchantRepo,
+            apiBaseUrl: `http://127.0.0.1:${process.env.PAYMENT_API_PORT || 6100}`
+          });
+        } catch {
+          if (!res.headersSent) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Could not load payment links. Check the service logs.' }));
+          }
+        }
         return;
       }
 

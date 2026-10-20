@@ -45,6 +45,29 @@ screen. Its QR payload must show the exact `PUBLIC_BASE_URL`. Pairing and bank
 verification are separate from successful HTTP startup. The crackers storefront
 still needs order storage and verified webhook integration.
 
+## Create and share real payment links
+
+After deploying the latest `main` branch:
+
+1. Open `/admin` and select **Create Payment Link**, or open `/payment-link`.
+2. Enter the amount and optionally add a purpose and customer label.
+3. Select **Create payment link**. Copy, share, or open the generated customer URL.
+4. Use **Recent payment links** to reopen requests and check their current status.
+
+Requests are stored in the existing gateway database and appear in the transaction
+ledger. The recent list shows the latest 50 links created through this page.
+Amounts are validated on the server in integer paise. The gateway's seeded sample
+receiver must be replaced with an active receiving UPI ID before link creation.
+Repeated network retries reuse the same request identifier; after a successful
+creation, a subsequent intentional submission creates a fresh request.
+
+Customer labels are descriptive and do not bind a link to a specific payer.
+Customer sign-in/OTP and bank-alert detection follow the existing checkout flow;
+configure WhatsApp and pair the Android observer as required by that flow. These
+links collect real payments. The page reads payment status from the database and
+does not provide a manual success/simulation action. Payment collection alone does
+not add order fulfillment or connect the crackers storefront.
+
 ## 1. App service
 
 In EasyPanel create a project and an App service named `gateway`:
